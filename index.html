@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Supabase Minimal Frontend</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Register</h2>
+  <input id="reg-email" placeholder="Email">
+  <input id="reg-password" type="password" placeholder="Password">
+  <button onclick="register()">Register</button>
+
+  <h2>Login</h2>
+  <input id="login-email" placeholder="Email">
+  <input id="login-password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+
+  <h2>Add Bookmark</h2>
+  <input id="bm-url" placeholder="Bookmark URL">
+  <input id="bm-note" placeholder="Note">
+  <button onclick="addBookmark()">Add</button>
+
+  <h2>Your Bookmarks</h2>
+  <button onclick="fetchBookmarks()">Refresh Bookmarks</button>
+  <ul id="bookmarks"></ul>
+
+  <script>
+    const supabaseUrl = 'YOUR_SUPABASE_URL';
+    const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function register() {
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+      const { error } = await supabase.auth.signUp({ email, password });
+      alert(error ? error.message : 'Check your email for confirmation!');
+    }
+
+    async function login() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      alert(error ? error.message : 'Logged in!');
+    }
+
+    async function addBookmark() {
+      const url = document.getElementById('bm-url').value;
+      const note = document.getElementById('bm-note').value;
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return alert("Please login first!");
+      const { error } = await supabase.from('bookmarks').insert([
+        { url, note, user_id: user.id, timestamp: new Date().toISOString() }
+      ]);
+      alert(error ? error.message : 'Bookmark added!');
+    }
+
+    async function fetchBookmarks() {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return alert("Please login first!");
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('timestamp', { ascending: false });
+      const ul = document.getElementById('bookmarks');
+      ul.innerHTML = error ? `<li>${error.message}</li>` :
+        data.map(b => `<li>${b.url} - ${b.note} (${b.timestamp})</li>`).join('');
+    }
+  </script>
+</body>
+</html>
